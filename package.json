@@ -1,9 +1,10 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-nodes-fashn",
   "version": "0.1.0",
-  "description": "",
+  "description": "FASHN AI node for n8n",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "n8n-nodes-fashn"
   ],
   "license": "MIT",
   "homepage": "",
@@ -13,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<...>/n8n-nodes-<...>.git"
+    "url": "https://github.com/fashn-AI/fashn-n8n"
   },
   "engines": {
     "node": ">=20.15"
@@ -33,12 +34,10 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js",
-      "dist/credentials/HttpBinApi.credentials.js"
+      "dist/credentials/FashnApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js",
-      "dist/nodes/HttpBin/HttpBin.node.js"
+      "dist/nodes/Fashn/Fashn.node.js"
     ]
   },
   "devDependencies": {

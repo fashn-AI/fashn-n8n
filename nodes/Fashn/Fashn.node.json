@@ -1,0 +1,20 @@
+{
+	"node": "n8n-nodes-base.Fashn",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"AI"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.fashn.ai/api-overview/api-fundamentals#authentication"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.fashn.ai/"
+			}
+		]
+	}
+}
