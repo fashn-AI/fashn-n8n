@@ -1,4 +1,11 @@
-import { INodeType, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import {
+  IExecuteFunctions,
+  INodeExecutionData,
+  INodeType,
+  INodeTypeDescription,
+  NodeConnectionType,
+  NodeOperationError,
+} from 'n8n-workflow';
 
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,13 +26,6 @@ export class Fashn implements INodeType {
 				required: true,
 			},
 		],
-    requestDefaults: {
-      baseURL: 'https://api-staging.fashn.ai',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-    },
 		properties: [
       {
         displayName: 'Resource',
@@ -56,25 +56,7 @@ export class Fashn implements INodeType {
             value: 'post',
             action: 'Generate a virtual try-on',
             description: 'Generate a virtual try-on',
-            routing: {
-              request: {
-                method: 'POST',
-                url: '/v1/run',
-                body: {
-                  model_image: '={{ $parameter.model_image }}',
-                  garment_image: '={{ $parameter.garment_image }}',
-                  category: '={{ $parameter.category }}',
-                  segmentation_free: '={{ $parameter.segmentation_free }}',
-                  moderation_level: '={{ $parameter.moderation_level }}',
-                  garment_photo_type: '={{ $parameter.garment_photo_type }}',
-                  mode: '={{ $parameter.mode }}',
-                  seed: '={{ $parameter.seed }}',
-                  num_samples: '={{ $parameter.num_samples }}',
-                  output_format: '={{ $parameter.output_format }}',
-                  return_base64: '={{ $parameter.return_base64 }}'
-                }
-              }
-            }
+
           }
         ],
         default: 'post',
@@ -308,4 +290,148 @@ export class Fashn implements INodeType {
       }
     ],
 	};
+
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
+    const returnData: INodeExecutionData[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const resource = this.getNodeParameter('resource', i) as string;
+        const operation = this.getNodeParameter('operation', i) as string;
+
+        if (resource === 'virtualTryOn' && operation === 'post') {
+          // Get all parameters
+          const model_image = this.getNodeParameter('model_image', i) as string;
+          const garment_image = this.getNodeParameter('garment_image', i) as string;
+          const category = this.getNodeParameter('category', i) as string;
+          const segmentation_free = this.getNodeParameter('segmentation_free', i) as boolean;
+          const moderation_level = this.getNodeParameter('moderation_level', i) as string;
+          const garment_photo_type = this.getNodeParameter('garment_photo_type', i) as string;
+          const mode = this.getNodeParameter('mode', i) as string;
+          const seed = this.getNodeParameter('seed', i) as number;
+          const num_samples = this.getNodeParameter('num_samples', i) as number;
+          const output_format = this.getNodeParameter('output_format', i) as string;
+          const return_base64 = this.getNodeParameter('return_base64', i) as boolean;
+
+          // Step 1: Make the initial API call
+          const initialResponse = await this.helpers.httpRequestWithAuthentication.call(
+            this,
+            'fashnApi',
+            {
+              method: 'POST',
+              url: 'https://api.fashn.ai/v1/run',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model_image,
+                garment_image,
+                category,
+                segmentation_free,
+                moderation_level,
+                garment_photo_type,
+                mode,
+                seed,
+                num_samples,
+                output_format,
+                return_base64,
+              }),
+            },
+          );
+
+          // Extract the job ID from the response
+          const responseData = initialResponse;
+          if (!responseData || typeof responseData !== 'object') {
+            throw new NodeOperationError(
+              this.getNode(),
+              'Invalid response from API: Expected object with job ID',
+            );
+          }
+
+          const jobId = responseData.id;
+          if (!jobId) {
+            throw new NodeOperationError(
+              this.getNode(),
+              'No job ID returned from API',
+            );
+          }
+
+          // Step 2: Poll the status endpoint
+          const timeout = 25 * 1000; // 25 seconds
+          const pollInterval = 5 * 1000; // 5 seconds
+          const startTime = Date.now();
+          let finalResult: any;
+
+          while (Date.now() - startTime < timeout) {
+            try {
+              const statusResponse = await this.helpers.httpRequestWithAuthentication.call(
+                this,
+                'fashnApi',
+                {
+                  method: 'GET',
+                  url: `https://api.fashn.ai/v1/status/${jobId}`,
+                  headers: {
+                    'Accept': 'application/json',
+                  },
+                },
+              );
+
+              const statusData = statusResponse;
+
+              if (statusData.status === 'completed') {
+                finalResult = statusData;
+                break;
+              } else if (statusData.status === 'failed') {
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Job failed: ${statusData.error || 'Unknown error'}`,
+                );
+              }
+
+              // Wait before next poll
+              if (Date.now() - startTime < timeout - pollInterval) {
+                await new Promise<void>(resolve => {
+                  // Use the global setTimeout function
+                  (globalThis as any).setTimeout(resolve, pollInterval);
+                });
+              }
+            } catch (error) {
+              if (error instanceof NodeOperationError) {
+                throw error;
+              }
+              throw new NodeOperationError(
+                this.getNode(),
+                `Error polling status: ${error.message}`,
+              );
+            }
+          }
+
+          if (!finalResult) {
+            throw new NodeOperationError(
+              this.getNode(),
+              `Job timed out after ${timeout / 1000} seconds`,
+            );
+          }
+
+          returnData.push({
+            json: finalResult,
+            pairedItem: { item: i },
+          });
+        }
+      } catch (error) {
+        if (this.continueOnFail()) {
+          returnData.push({
+            json: { error: error.message },
+            pairedItem: { item: i },
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    return [returnData];
+  }
 }
