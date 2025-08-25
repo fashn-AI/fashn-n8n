@@ -93,6 +93,7 @@ export class Fashn implements INodeType {
         default: '',
         description: 'URL or base64 encoded image of the model',
         placeholder: 'https://example.com/model.jpg or data:image/jpeg;base64,...',
+        hint: 'Primary image of the person on whom the virtual try-on will be performed.',
       },
       {
         displayName: 'Garment Image',
@@ -108,6 +109,7 @@ export class Fashn implements INodeType {
         default: '',
         description: 'URL or base64 encoded image of the garment',
         placeholder: 'https://example.com/garment.jpg or data:image/jpeg;base64,...',
+        hint: 'Reference image of the clothing item to be tried on the model_image.',
       },
       {
         displayName: 'Category',
