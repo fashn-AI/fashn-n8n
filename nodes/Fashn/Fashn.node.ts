@@ -5,12 +5,12 @@ import {
   INodeTypeDescription,
   NodeConnectionType,
 } from 'n8n-workflow';
-import { default as FashnAPI } from 'fashn';
+import { default as FashnApi } from 'fashn';
 
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FASHN',
-		name: 'FASHN',
+		name: 'fashn',
 		icon: 'file:fashn.svg',
 		group: ['transform'],
 		version: [1, 0, 0],
@@ -31,9 +31,10 @@ export class Fashn implements INodeType {
         displayName: 'Resource',
         name: 'resource',
         type: 'options',
+        noDataExpression: true,
         options: [
           {
-            name: 'Virtual try-on',
+            name: 'Virtual Try-On',
             value: 'virtualTryOn'
           }
         ],
@@ -43,6 +44,7 @@ export class Fashn implements INodeType {
         displayName: 'Operation',
         name: 'operation',
         type: 'options',
+        noDataExpression: true,
         displayOptions: {
           show: {
             resource: [
@@ -54,7 +56,7 @@ export class Fashn implements INodeType {
           {
             name: 'Post',
             value: 'post',
-            action: 'Generate a virtual try-on',
+            action: 'Generate a virtual try on',
             description: 'Generate a virtual try-on',
 
           }
@@ -117,7 +119,7 @@ export class Fashn implements INodeType {
             value: 'bottoms',
           },
           {
-            name: 'One-pieces',
+            name: 'One-Pieces',
             value: 'one-pieces',
           },
         ],
@@ -180,7 +182,7 @@ export class Fashn implements INodeType {
             value: 'auto',
           },
           {
-            name: 'Flat-lay',
+            name: 'Flat-Lay',
             value: 'flat-lay',
           },
           {
@@ -316,11 +318,11 @@ export class Fashn implements INodeType {
           const credentials = await this.getCredentials('fashnApi');
           const apiKey = credentials.apiKey as string;
 
-          const client = new FashnAPI({
+          const client = new FashnApi({
             apiKey: apiKey
           });
 
-          const response = await client.predictions.subscribe({
+          const params: FashnApi.PredictionSubscribeParams = {
             inputs: {
               garment_image: garment_image,
               model_image: model_image,
@@ -335,13 +337,13 @@ export class Fashn implements INodeType {
               return_base64: return_base64,
             },
             model_name: 'tryon-v1.6',
-          });
+          };
+
+          const response = await client.predictions.subscribe(params);
           
           let output = '';
           if (response.output && response.output.length > 0) {
             output = response.output[0];
-          } else {
-            throw new Error('No output from FASHN API');
           }
 
           returnData.push({
