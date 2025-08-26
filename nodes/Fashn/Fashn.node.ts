@@ -9,14 +9,14 @@ import {
 
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Fashn',
-		name: 'fashn',
+		displayName: 'FASHN',
+		name: 'FASHN',
 		icon: 'file:fashn.svg',
 		group: ['transform'],
 		version: [1, 0, 0],
-		description: 'Fashn API',
+		description: 'FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.',
 		defaults: {
-			name: 'Fashn',
+			name: 'FASHN',
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],

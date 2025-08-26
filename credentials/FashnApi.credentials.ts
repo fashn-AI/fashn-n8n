@@ -7,12 +7,12 @@ import {
 
 export class FashnApi implements ICredentialType {
 	name = 'fashnApi';
-	displayName = 'Fashn API';
+	displayName = 'FASHN API';
 	documentationUrl = 'https://docs.fashn.ai/';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Token',
-			name: 'token',
+			displayName: 'API Key',
+			name: 'apiKey',
 			type: 'string',
 			default: '',
 			typeOptions: {
@@ -35,7 +35,7 @@ export class FashnApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '={{"Bearer " + $credentials.token}}',
+				Authorization: '={{"Bearer " + $credentials.apiKey}}',
 			},
 		},
 	};
