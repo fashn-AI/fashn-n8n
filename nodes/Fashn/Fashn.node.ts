@@ -4,8 +4,8 @@ import {
   INodeType,
   INodeTypeDescription,
   NodeConnectionType,
-  NodeOperationError,
 } from 'n8n-workflow';
+import { default as FashnAPI } from 'fashn';
 
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
@@ -301,7 +301,6 @@ export class Fashn implements INodeType {
         const operation = this.getNodeParameter('operation', i) as string;
 
         if (resource === 'virtualTryOn' && operation === 'post') {
-          // Get all parameters
           const model_image = this.getNodeParameter('model_image', i) as string;
           const garment_image = this.getNodeParameter('garment_image', i) as string;
           const category = this.getNodeParameter('category', i) as string;
@@ -314,109 +313,39 @@ export class Fashn implements INodeType {
           const output_format = this.getNodeParameter('output_format', i) as string;
           const return_base64 = this.getNodeParameter('return_base64', i) as boolean;
 
-          // Step 1: Make the initial API call
-          const initialResponse = await this.helpers.httpRequestWithAuthentication.call(
-            this,
-            'fashnApi',
-            {
-              method: 'POST',
-              url: 'https://api.fashn.ai/v1/run',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model_image,
-                garment_image,
-                category,
-                segmentation_free,
-                moderation_level,
-                garment_photo_type,
-                mode,
-                seed,
-                num_samples,
-                output_format,
-                return_base64,
-              }),
+          const credentials = await this.getCredentials('fashnApi');
+          const apiKey = credentials.apiKey as string;
+
+          const client = new FashnAPI({
+            apiKey: apiKey
+          });
+
+          const response = await client.predictions.subscribe({
+            inputs: {
+              garment_image: garment_image,
+              model_image: model_image,
+              category: category as 'auto' | 'tops' | 'bottoms' | 'one-pieces',
+              segmentation_free: segmentation_free,
+              moderation_level: moderation_level as 'conservative' | 'permissive' | 'none',
+              garment_photo_type: garment_photo_type as 'auto' | 'flat-lay' | 'model',
+              mode: mode as 'performance' | 'balanced' | 'quality',
+              seed: seed,
+              num_samples: num_samples,
+              output_format: output_format as 'png' | 'jpeg',
+              return_base64: return_base64,
             },
-          );
-
-          // Extract the job ID from the response
-          const responseData = initialResponse;
-          if (!responseData || typeof responseData !== 'object') {
-            throw new NodeOperationError(
-              this.getNode(),
-              'Invalid response from API: Expected object with job ID',
-            );
-          }
-
-          const jobId = responseData.id;
-          if (!jobId) {
-            throw new NodeOperationError(
-              this.getNode(),
-              'No job ID returned from API',
-            );
-          }
-
-          // Step 2: Poll the status endpoint
-          const timeout = 25 * 1000; // 25 seconds
-          const pollInterval = 5 * 1000; // 5 seconds
-          const startTime = Date.now();
-          let finalResult: any;
-
-          while (Date.now() - startTime < timeout) {
-            try {
-              const statusResponse = await this.helpers.httpRequestWithAuthentication.call(
-                this,
-                'fashnApi',
-                {
-                  method: 'GET',
-                  url: `https://api.fashn.ai/v1/status/${jobId}`,
-                  headers: {
-                    'Accept': 'application/json',
-                  },
-                },
-              );
-
-              const statusData = statusResponse;
-
-              if (statusData.status === 'completed') {
-                finalResult = statusData;
-                break;
-              } else if (statusData.status === 'failed') {
-                throw new NodeOperationError(
-                  this.getNode(),
-                  `Job failed: ${statusData.error || 'Unknown error'}`,
-                );
-              }
-
-              // Wait before next poll
-              if (Date.now() - startTime < timeout - pollInterval) {
-                await new Promise<void>(resolve => {
-                  // Use the global setTimeout function
-                  (globalThis as any).setTimeout(resolve, pollInterval);
-                });
-              }
-            } catch (error) {
-              if (error instanceof NodeOperationError) {
-                throw error;
-              }
-              throw new NodeOperationError(
-                this.getNode(),
-                `Error polling status: ${error.message}`,
-              );
-            }
-          }
-
-          if (!finalResult) {
-            throw new NodeOperationError(
-              this.getNode(),
-              `Job timed out after ${timeout / 1000} seconds`,
-            );
+            model_name: 'tryon-v1.6',
+          });
+          
+          let output = '';
+          if (response.output && response.output.length > 0) {
+            output = response.output[0];
+          } else {
+            throw new Error('No output from FASHN API');
           }
 
           returnData.push({
-            json: finalResult,
+            json: { output: output },
             pairedItem: { item: i },
           });
         }
