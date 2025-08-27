@@ -297,23 +297,23 @@ export class Fashn implements INodeType {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
 
-    for (let i = 0; i < items.length; i++) {
+    for (let item = 0; item < items.length; item++) {
       try {
-        const resource = this.getNodeParameter('resource', i) as string;
-        const operation = this.getNodeParameter('operation', i) as string;
+        const resource = this.getNodeParameter('resource', item) as string;
+        const operation = this.getNodeParameter('operation', item) as string;
 
         if (resource === 'virtualTryOn' && operation === 'post') {
-          const model_image = this.getNodeParameter('model_image', i) as string;
-          const garment_image = this.getNodeParameter('garment_image', i) as string;
-          const category = this.getNodeParameter('category', i) as string;
-          const segmentation_free = this.getNodeParameter('segmentation_free', i) as boolean;
-          const moderation_level = this.getNodeParameter('moderation_level', i) as string;
-          const garment_photo_type = this.getNodeParameter('garment_photo_type', i) as string;
-          const mode = this.getNodeParameter('mode', i) as string;
-          const seed = this.getNodeParameter('seed', i) as number;
-          const num_samples = this.getNodeParameter('num_samples', i) as number;
-          const output_format = this.getNodeParameter('output_format', i) as string;
-          const return_base64 = this.getNodeParameter('return_base64', i) as boolean;
+          const model_image = this.getNodeParameter('model_image', item) as string;
+          const garment_image = this.getNodeParameter('garment_image', item) as string;
+          const category = this.getNodeParameter('category', item) as string;
+          const segmentation_free = this.getNodeParameter('segmentation_free', item) as boolean;
+          const moderation_level = this.getNodeParameter('moderation_level', item) as string;
+          const garment_photo_type = this.getNodeParameter('garment_photo_type', item) as string;
+          const mode = this.getNodeParameter('mode', item) as string;
+          const seed = this.getNodeParameter('seed', item) as number;
+          const num_samples = this.getNodeParameter('num_samples', item) as number;
+          const output_format = this.getNodeParameter('output_format', item) as string;
+          const return_base64 = this.getNodeParameter('return_base64', item) as boolean;
 
           const credentials = await this.getCredentials('fashnApi');
           const apiKey = credentials.apiKey as string;
@@ -348,14 +348,14 @@ export class Fashn implements INodeType {
 
           returnData.push({
             json: { output: output },
-            pairedItem: { item: i },
+            pairedItem: { item: item },
           });
         }
       } catch (error) {
         if (this.continueOnFail()) {
           returnData.push({
             json: { error: error.message },
-            pairedItem: { item: i },
+            pairedItem: { item: item },
           });
         } else {
           throw error;
