@@ -4,17 +4,19 @@
   "description": "FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.",
   "keywords": [
     "n8n-community-node-package",
-    "n8n-nodes-fashn"
+    "fashion",
+    "AI",
+    "virtual-try-on"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://fashn.ai",
   "author": {
     "name": "FASHN AI",
     "email": "support@fashn.ai"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fashn-AI/fashn-n8n"
+    "url": "git+https://github.com/fashn-AI/fashn-n8n.git"
   },
   "engines": {
     "node": ">=20.15"
