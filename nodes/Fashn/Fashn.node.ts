@@ -138,6 +138,7 @@ export class Fashn implements INodeType {
         },
         default: true,
         description: 'Whether to use segmentation-free processing',
+        hint: 'Direct garment fitting without clothing segmentation, enabling bulkier garment try-ons with improved preservation of body shape and skin texture. Set to false if original garments are not removed properly.'
       },
       {
         displayName: 'Moderation Level',
@@ -341,13 +342,13 @@ export class Fashn implements INodeType {
 
           const response = await client.predictions.subscribe(params);
           
-          let output = '';
+          let output: string[] = [];
           if (response.output && response.output.length > 0) {
-            output = response.output[0];
+            output = response.output;
           }
 
           returnData.push({
-            json: { output: output },
+            json: { output: output, status: response.status, error: response.error, id: response.id },
             pairedItem: { item: item },
           });
         }
