@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-fashn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.",
   "keywords": [
     "n8n-community-node-package",

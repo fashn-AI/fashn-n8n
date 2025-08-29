@@ -13,7 +13,7 @@ export class Fashn implements INodeType {
 		name: 'fashn',
 		icon: 'file:fashn.svg',
 		group: ['transform'],
-		version: [1, 0, 0],
+		version: [1],
 		description: 'FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.',
 		defaults: {
 			name: 'FASHN',

@@ -45,7 +45,11 @@ You can refer to [FASHN AI API Docs](https://docs.fashn.ai/) to refer to the API
 
 ## Version history
 
-#### 1.0.0
+#### 0.1.1
+
+- Remove fashn sdk external dependency and use the API directly (Dependencies are not allowed in n8n community plugins)
+
+#### 0.1.0
 
 - Initial release
 - Actions for generating virtual try-on
