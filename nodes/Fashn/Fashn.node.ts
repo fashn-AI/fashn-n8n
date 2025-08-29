@@ -4,8 +4,8 @@ import {
   INodeType,
   INodeTypeDescription,
   NodeConnectionType,
+  NodeOperationError,
 } from 'n8n-workflow';
-import { default as FashnApi } from 'fashn';
 
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,7 +35,7 @@ export class Fashn implements INodeType {
         options: [
           {
             name: 'Virtual Try-On',
-            value: 'virtualTryOn'
+            value: 'virtualTryOn',
           }
         ],
         default: 'virtualTryOn',
@@ -62,6 +62,31 @@ export class Fashn implements INodeType {
           }
         ],
         default: 'post',
+      },
+      {
+        displayName: 'AI Model Version',
+        name: 'model_version',
+        type: 'options',
+        displayOptions: {
+          show: {
+            resource: ['virtualTryOn'],
+            operation: ['post'],
+          },
+        },
+        required: true,
+        options: [
+          {
+            name: 'Try-On v1.6 (Latest)',
+            value: 'tryon-v1.6',
+          },
+          {
+            name: 'Try-On v1.5',
+            value: 'tryon-v1.5',
+          },
+        ],
+        default: 'tryon-v1.6',
+        description: 'AI model version to use for virtual try-on generation',
+        hint: 'Choose AI model version: v1.6 (latest, higher quality, recommended for production) or v1.5 (faster processing, good for testing).'
       },
       {
         displayName: 'Model Image',
@@ -298,65 +323,140 @@ export class Fashn implements INodeType {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
 
-    for (let item = 0; item < items.length; item++) {
+    for (let i = 0; i < items.length; i++) {
       try {
-        const resource = this.getNodeParameter('resource', item) as string;
-        const operation = this.getNodeParameter('operation', item) as string;
+        const resource = this.getNodeParameter('resource', i) as string;
+        const operation = this.getNodeParameter('operation', i) as string;
 
         if (resource === 'virtualTryOn' && operation === 'post') {
-          const model_image = this.getNodeParameter('model_image', item) as string;
-          const garment_image = this.getNodeParameter('garment_image', item) as string;
-          const category = this.getNodeParameter('category', item) as string;
-          const segmentation_free = this.getNodeParameter('segmentation_free', item) as boolean;
-          const moderation_level = this.getNodeParameter('moderation_level', item) as string;
-          const garment_photo_type = this.getNodeParameter('garment_photo_type', item) as string;
-          const mode = this.getNodeParameter('mode', item) as string;
-          const seed = this.getNodeParameter('seed', item) as number;
-          const num_samples = this.getNodeParameter('num_samples', item) as number;
-          const output_format = this.getNodeParameter('output_format', item) as string;
-          const return_base64 = this.getNodeParameter('return_base64', item) as boolean;
+          // Get all parameters
+          const model_image = this.getNodeParameter('model_image', i) as string;
+          const garment_image = this.getNodeParameter('garment_image', i) as string;
+          const category = this.getNodeParameter('category', i) as string;
+          const segmentation_free = this.getNodeParameter('segmentation_free', i) as boolean;
+          const moderation_level = this.getNodeParameter('moderation_level', i) as string;
+          const garment_photo_type = this.getNodeParameter('garment_photo_type', i) as string;
+          const mode = this.getNodeParameter('mode', i) as string;
+          const seed = this.getNodeParameter('seed', i) as number;
+          const num_samples = this.getNodeParameter('num_samples', i) as number;
+          const output_format = this.getNodeParameter('output_format', i) as string;
+          const model_version = this.getNodeParameter('model_version', i) as string;
+          const return_base64 = this.getNodeParameter('return_base64', i) as boolean;
 
-          const credentials = await this.getCredentials('fashnApi');
-          const apiKey = credentials.apiKey as string;
-
-          const client = new FashnApi({
-            apiKey: apiKey
-          });
-
-          const params: FashnApi.PredictionSubscribeParams = {
-            inputs: {
-              garment_image: garment_image,
-              model_image: model_image,
-              category: category as 'auto' | 'tops' | 'bottoms' | 'one-pieces',
-              segmentation_free: segmentation_free,
-              moderation_level: moderation_level as 'conservative' | 'permissive' | 'none',
-              garment_photo_type: garment_photo_type as 'auto' | 'flat-lay' | 'model',
-              mode: mode as 'performance' | 'balanced' | 'quality',
-              seed: seed,
-              num_samples: num_samples,
-              output_format: output_format as 'png' | 'jpeg',
-              return_base64: return_base64,
+          // Step 1: Make the initial API call
+          const initialResponse = await this.helpers.httpRequestWithAuthentication.call(
+            this,
+            'fashnApi',
+            {
+              method: 'POST',
+              url: 'https://api.fashn.ai/v1/run',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model_name: model_version,
+                inputs: {
+                  model_image,
+                  garment_image,
+                  category,
+                  segmentation_free,
+                  moderation_level,
+                  garment_photo_type,
+                  mode,
+                  seed,
+                  num_samples,
+                  output_format,
+                  return_base64,
+                }
+              }),
             },
-            model_name: 'tryon-v1.6',
-          };
+          );
 
-          const response = await client.predictions.subscribe(params);
-          
-          let output: string[] = [];
-          if (response.output && response.output.length > 0) {
-            output = response.output;
+          // Extract the prediction ID from the response
+          const responseData = initialResponse;
+          if (!responseData || typeof responseData !== 'object') {
+            throw new NodeOperationError(
+              this.getNode(),
+              'Invalid response from API: Expected object with prediction ID',
+            );
+          }
+
+          const predictionId = responseData.id;
+          if (!predictionId) {
+            throw new NodeOperationError(
+              this.getNode(),
+              'No prediction ID returned from API',
+            );
+          }
+
+          // Step 2: Poll the status endpoint
+          const timeout = 25 * 1000; // 25 seconds
+          const pollInterval = 5 * 1000; // 5 seconds
+          const startTime = Date.now();
+          let finalResult: any;
+
+          while (Date.now() - startTime < timeout) {
+            try {
+              const statusResponse = await this.helpers.httpRequestWithAuthentication.call(
+                this,
+                'fashnApi',
+                {
+                  method: 'GET',
+                  url: `https://api.fashn.ai/v1/status/${predictionId}`,
+                  headers: {
+                    'Accept': 'application/json',
+                  },
+                },
+              );
+
+              const statusData = statusResponse;
+
+              if (statusData.status === 'completed') {
+                finalResult = statusData;
+                break;
+              } else if (statusData.status === 'failed') {
+                throw new NodeOperationError(
+                  this.getNode(),
+                  `Job failed: ${statusData.error || 'Unknown error'}`,
+                );
+              }
+
+              // Wait before next poll
+              if (Date.now() - startTime < timeout - pollInterval) {
+                await new Promise<void>(resolve => {
+                  // Use the global setTimeout function
+                  (globalThis as any).setTimeout(resolve, pollInterval);
+                });
+              }
+            } catch (error) {
+              if (error instanceof NodeOperationError) {
+                throw error;
+              }
+              throw new NodeOperationError(
+                this.getNode(),
+                `Error polling status: ${error.message}`,
+              );
+            }
+          }
+
+          if (!finalResult) {
+            throw new NodeOperationError(
+              this.getNode(),
+              `Job timed out after ${timeout / 1000} seconds`,
+            );
           }
 
           returnData.push({
-            json: { output: output, status: response.status, error: response.error, id: response.id },
-            pairedItem: { item: item },
+            json: finalResult,
+            pairedItem: { item: i },
           });
         }
       } catch (error) {
         if (this.continueOnFail()) {
           returnData.push({
             json: { error: error.message },
-            pairedItem: { item: item },
+            pairedItem: { item: i },
           });
         } else {
           throw error;
