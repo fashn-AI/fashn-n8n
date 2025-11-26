@@ -7,6 +7,8 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export class Fashn implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FASHN',
@@ -424,10 +426,7 @@ export class Fashn implements INodeType {
 
               // Wait before next poll
               if (Date.now() - startTime < timeout - pollInterval) {
-                await new Promise<void>(resolve => {
-                  // Use the global setTimeout function
-                  (globalThis as any).setTimeout(resolve, pollInterval);
-                });
+                await sleep(pollInterval);
               }
             } catch (error) {
               if (error instanceof NodeOperationError) {

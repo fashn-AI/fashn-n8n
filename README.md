@@ -45,6 +45,10 @@ You can refer to [FASHN AI API Docs](https://docs.fashn.ai/) to refer to the API
 
 ## Version history
 
+#### 0.1.2
+
+- Remove the use of global setTimeout in the node source code
+
 #### 0.1.1
 
 - Remove fashn sdk external dependency and use the API directly (Dependencies are not allowed in n8n community plugins)
