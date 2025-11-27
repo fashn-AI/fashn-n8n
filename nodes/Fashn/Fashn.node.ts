@@ -8,25 +8,25 @@ import {
 } from 'n8n-workflow';
 
 export class Fashn implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'FASHN',
-		name: 'fashn',
-		icon: 'file:fashn.svg',
-		group: ['transform'],
-		version: [1],
-		description: 'FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.',
-		defaults: {
-			name: 'FASHN',
-		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'fashnApi',
-				required: true,
-			},
-		],
-		properties: [
+  description: INodeTypeDescription = {
+    displayName: 'FASHN',
+    name: 'fashn',
+    icon: 'file:fashn.svg',
+    group: ['transform'],
+    version: [1],
+    description: 'FASHN AI is a virtual try-on platform that generates realistic try-on images by combining model photos with garment images using advanced AI technology.',
+    defaults: {
+      name: 'FASHN',
+    },
+    inputs: [NodeConnectionType.Main],
+    outputs: [NodeConnectionType.Main],
+    credentials: [
+      {
+        name: 'fashnApi',
+        required: true,
+      },
+    ],
+    properties: [
       {
         displayName: 'Resource',
         name: 'resource',
@@ -317,7 +317,7 @@ export class Fashn implements INodeType {
         description: 'Whether to return images as base64 encoded strings',
       }
     ],
-	};
+  };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
@@ -373,7 +373,7 @@ export class Fashn implements INodeType {
             },
           );
 
-          // Extract the prediction ID from the response
+          // Return the initial response with the prediction ID
           const responseData = initialResponse;
           if (!responseData || typeof responseData !== 'object') {
             throw new NodeOperationError(
@@ -390,65 +390,8 @@ export class Fashn implements INodeType {
             );
           }
 
-          // Step 2: Poll the status endpoint
-          const timeout = 25 * 1000; // 25 seconds
-          const pollInterval = 5 * 1000; // 5 seconds
-          const startTime = Date.now();
-          let finalResult: any;
-
-          while (Date.now() - startTime < timeout) {
-            try {
-              const statusResponse = await this.helpers.httpRequestWithAuthentication.call(
-                this,
-                'fashnApi',
-                {
-                  method: 'GET',
-                  url: `https://api.fashn.ai/v1/status/${predictionId}`,
-                  headers: {
-                    'Accept': 'application/json',
-                  },
-                },
-              );
-
-              const statusData = statusResponse;
-
-              if (statusData.status === 'completed') {
-                finalResult = statusData;
-                break;
-              } else if (statusData.status === 'failed') {
-                throw new NodeOperationError(
-                  this.getNode(),
-                  `Job failed: ${statusData.error || 'Unknown error'}`,
-                );
-              }
-
-              // Wait before next poll
-              if (Date.now() - startTime < timeout - pollInterval) {
-                await new Promise<void>(resolve => {
-                  // Use the global setTimeout function
-                  (globalThis as any).setTimeout(resolve, pollInterval);
-                });
-              }
-            } catch (error) {
-              if (error instanceof NodeOperationError) {
-                throw error;
-              }
-              throw new NodeOperationError(
-                this.getNode(),
-                `Error polling status: ${error.message}`,
-              );
-            }
-          }
-
-          if (!finalResult) {
-            throw new NodeOperationError(
-              this.getNode(),
-              `Job timed out after ${timeout / 1000} seconds`,
-            );
-          }
-
           returnData.push({
-            json: finalResult,
+            json: responseData,
             pairedItem: { item: i },
           });
         }
